@@ -1,0 +1,110 @@
+// server.js
+// Este é um exemplo de código de backend Node.js para enviar e-mails.
+// Para rodar este código, você precisará ter Node.js instalado.
+//
+// Passos para configurar e rodar (em um ambiente real):
+// 1. Crie um novo diretório para o seu backend (ex: 'email-sender').
+// 2. Navegue até ele no terminal: `cd email-sender`
+// 3. Inicialize um projeto Node.js: `npm init -y`
+// 4. Instale as dependências: `npm install express nodemailer dotenv cors`
+// 5. Crie um arquivo `.env` na raiz do seu diretório (veja abaixo).
+// 6. Crie este arquivo `server.js` dentro do diretório.
+// 7. Rode o servidor: `node server.js`
+//
+// Conteúdo do arquivo .env (CRIE ESTE ARQUIVO E NÃO COMPARTILHE!):
+// GMAIL_USER=mateuslima5300@gmail.com
+// GMAIL_APP_PASSWORD=fmnc kaiy irxe clhi
+// (Substitua 'sua_senha_de_app_do_gmail_aqui' pela Senha de App gerada no Google)
+//
+// OU (se usar um serviço como SendGrid):
+// EMAIL_SERVICE_HOST=smtp.sendgrid.net
+// EMAIL_SERVICE_PORT=587
+// EMAIL_SERVICE_USER=apikey
+// EMAIL_SERVICE_PASSWORD=SG.xxxxxxxxxxxxxxxxxxxx
+// YOUR_EMAIL_ADDRESS=seu_email_de_envio@exemplo.com
+
+require('dotenv').config(); // Carrega variáveis de ambiente do arquivo .env
+const express = require('express');
+const nodemailer = require('nodemailer');
+const cors = require('cors'); // Para permitir requisições do seu frontend
+
+const app = express();
+const port = process.env.PORT || 3000; // Porta do servidor, ou 3000 por padrão
+
+// Configuração do CORS para permitir requisições do seu frontend
+// Substitua 'http://localhost:8080' pelo domínio do seu site em produção
+const corsOptions = {
+    origin: '*', // Permite qualquer origem para testes. Em produção, use o domínio do seu site.
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+    optionsSuccessStatus: 204
+};
+app.use(cors(corsOptions));
+app.use(express.json()); // Para parsear o corpo das requisições como JSON
+
+// Configuração do Nodemailer (para Gmail com Senha de App)
+// É ALTAMENTE RECOMENDADO USAR UMA SENHA DE APP DO GMAIL OU UM SERVIÇO DEDICADO.
+// NUNCA USE SUA SENHA PRINCIPAL DO GMAIL DIRETAMENTE AQUI.
+const transporter = nodemailer.createTransport({
+    service: 'gmail', // Ou 'smtp' para outros serviços
+    auth: {
+        user: process.env.GMAIL_USER, // mateuslima5300@gmail.com
+        pass: process.env.GMAIL_APP_PASSWORD // fmnc kaiy irxe clhi
+    },
+    // Se estiver usando um serviço SMTP diferente do Gmail, pode precisar de:
+    // host: process.env.EMAIL_SERVICE_HOST,
+    // port: process.env.EMAIL_SERVICE_PORT,
+    // secure: false, // true para 465, false para outras portas como 587
+    // auth: {
+    //     user: process.env.EMAIL_SERVICE_USER,
+    //     pass: process.env.EMAIL_SERVICE_PASSWORD
+    // }
+});
+
+// Endpoint para receber os dados do formulário de contato
+app.post('/send-email', async (req, res) => {
+    const { name, email, phone, subject, message } = req.body;
+
+    // Validação básica dos dados
+    if (!name || !email || !subject || !message) {
+        return res.status(400).json({ success: false, error: 'Todos os campos obrigatórios (Nome, Email, Assunto, Mensagem) devem ser preenchidos.' });
+    }
+
+    try {
+        // Conteúdo do e-mail que você receberá
+        const mailOptions = {
+            from: process.env.GMAIL_USER, // O e-mail que enviará (seu Gmail)
+            to: 'mateuslima5300@gmail.com', // SEU E-MAIL PARA RECEBER AS MENSAGENS
+            subject: `Novo Contato do Site: ${subject}`,
+            html: `
+                <p>Você recebeu uma nova mensagem de contato do seu site LIMA RPA SOLUTIONS:</p>
+                <ul>
+                    <li><strong>Nome:</strong> ${name}</li>
+                    <li><strong>Email:</strong> ${email}</li>
+                    <li><strong>Telefone:</strong> ${phone || 'Não fornecido'}</li>
+                    <li><strong>Assunto:</strong> ${subject}</li>
+                </ul>
+                <p><strong>Mensagem:</strong></p>
+                <p>${message}</p>
+                <br>
+                <p>Por favor, responda diretamente para: ${email}</p>
+            `
+        };
+
+        // Envia o e-mail
+        await transporter.sendMail(mailOptions);
+
+        console.log('Email enviado com sucesso para mateuslima5300@gmail.com');
+        res.status(200).json({ success: true, message: 'Mensagem enviada com sucesso!' });
+
+    } catch (error) {
+        console.error('Erro ao enviar o e-mail:', error);
+        res.status(500).json({ success: false, error: 'Erro ao enviar a mensagem. Por favor, tente novamente mais tarde.' });
+    }
+});
+
+// Inicia o servidor
+app.listen(port, () => {
+    console.log(`Servidor de e-mail rodando em http://localhost:${port}`);
+    console.log('Lembre-se de configurar as variáveis de ambiente no arquivo .env!');
+});
